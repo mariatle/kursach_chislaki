@@ -1,9 +1,5 @@
 # optimization_comparison/main.py
 import argparse
-import matplotlib.pyplot as plt
-from optimization_comparison.runner import run_all_comparisons
-
-
 def parse_arguments():
     """
     Парсинг аргументов командной строки.
@@ -109,6 +105,11 @@ def run_specific_function(
 
     func, func_name_str, bounds = func_mapping[func_name]
 
+    # Подбираем параметры алгоритмов под конкретную тестовую функцию
+    from optimization_comparison.runner import get_algorithm_params, _print_params_summary
+    algo_params = get_algorithm_params(func_name)
+    _print_params_summary(func_name, algo_params)
+
     print(f"\n{'='*50}")
     print(f"Запуск на функции: {func_name_str}")
     print(f"Seed: {seed}, GIF: {create_gif}")
@@ -128,6 +129,7 @@ def run_specific_function(
             create_gif=create_gif,
             gif_filename=gif_filename,
             max_frames=max_frames,
+            algorithm_params=algo_params,
         )
         stats = None
     else:
@@ -141,6 +143,7 @@ def run_specific_function(
             create_gif=create_gif,
             gif_basename=func_name,
             max_frames=max_frames,
+            algorithm_params=algo_params,
             json_filename=json_filename,
         )
 
@@ -162,6 +165,15 @@ def main():
     Главная функция для запуска сравнения алгоритмов.
     """
     args = parse_arguments()
+
+    # Если графики не нужно показывать, принудительно используем headless-backend.
+    # Это делает запуск стабильнее в терминале/CI и ускоряет сохранение файлов.
+    if args.no_show:
+        import matplotlib
+        matplotlib.use("Agg")
+
+    import matplotlib.pyplot as plt
+    from optimization_comparison.runner import run_all_comparisons
 
     print("Сравнение алгоритмов оптимизации")
     print("=" * 50)
@@ -201,13 +213,16 @@ def main():
     # Показываем графики, если не указан флаг --no-show
     if not args.no_show:
         plt.show()
+    else:
+        # В режиме '--no-show' закрываем все фигуры, чтобы процесс корректно завершался
+        plt.close('all')
 
     print("\n" + "=" * 50)
     print("Сравнение завершено!")
 
     # Вывод списка созданных файлов
     files_created = []
-    funcs_to_check = ["paraboloid", "rastrigin", "schwefel"] if args.func == "all" else [args.func]
+    funcs_to_check = ["paraboloid", "rastrigin", "schwefel", "matyas", "booth"] if args.func == "all" else [args.func]
 
     for func_name in funcs_to_check:
         files_created.append(f"{func_name}_comparison.png")
